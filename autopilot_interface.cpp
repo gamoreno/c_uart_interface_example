@@ -269,7 +269,7 @@ read_messages()
 					mavlink_msg_heartbeat_decode(&message, &(current_messages.heartbeat));
 					current_messages.time_stamps.heartbeat = get_time_usec();
 					this_timestamps.heartbeat = current_messages.time_stamps.heartbeat;
-					printf("MAVLINK_MSG_ID_HEARTBEAT:%x %x\n", current_messages.heartbeat.base_mode, current_messages.heartbeat.custom_mode);
+					//printf("MAVLINK_MSG_ID_HEARTBEAT:%x %x\n", current_messages.heartbeat.base_mode, current_messages.heartbeat.custom_mode);
 					break;
 				}
 
@@ -606,6 +606,7 @@ void Autopilot_Interface::disarm() {
 
 
 void Autopilot_Interface::set_posctl_mode() {
+	const uint32_t PX4_CUSTOM_MAIN_MODE_ALTCTL = 2;
 	const uint32_t PX4_CUSTOM_MAIN_MODE_POSCTL = 3;
 
 	// we need the current mode

@@ -296,6 +296,11 @@ private:
 		double pitch;
 		double yaw;
 		double thrust;
+
+		/*
+		 * all have [-1,+1] range except thrust, with [0,1] range
+		 */
+		Manual_Input() : roll(0.0), pitch(0.0), yaw(0.0), thrust(0.4) {};
 	} current_manual_input;
 
 	void read_thread();

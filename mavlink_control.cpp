@@ -54,7 +54,21 @@
 // ------------------------------------------------------------------------------
 
 #include "mavlink_control.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
+#include <cerrno>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
+using namespace std;
+
+const char* PIPE_NAME = "/tmp/manual_input_pipe";
+
+void remoteCommands(Autopilot_Interface &api);
 
 // ------------------------------------------------------------------------------
 //   TOP
@@ -140,7 +154,8 @@ top (int argc, char **argv)
 	/*
 	 * Now we can implement the algorithm we want on top of the autopilot interface
 	 */
-	commands(autopilot_interface);
+	//commands(autopilot_interface);
+	remoteCommands(autopilot_interface);
 
 
 	// --------------------------------------------------------------------------
@@ -176,75 +191,62 @@ void test_manual_control(Autopilot_Interface &api, double roll, double pitch, do
 	sleep(3);
 }
 
+void remoteCommands(Autopilot_Interface &api)
+{
+
+	if (mknod(PIPE_NAME, S_IFIFO | 0600, 0) != 0) {
+		if (errno != EEXIST) {
+			cerr << "Error creating pipe " << PIPE_NAME << ": " << strerror(errno) << endl;
+			return;
+		}
+	}
+
+	api.arm();
+	sleep(1);
+
+	api.set_posctl_mode();
+	sleep(1);
+
+
+	bool shutdown = false;
+	while (!shutdown) {
+		std::ifstream pipe(PIPE_NAME);
+		if (pipe) {
+			std::string line;
+			while (std::getline(pipe, line)) {
+				//cout << "got input [" << line << "]" << endl;
+	    	    std::istringstream ss(line);
+	    	    char cmd;
+	    	    ss >> cmd;
+	    	    //cout << "got cmd [" << cmd << "]" << endl;
+	    	    if (cmd == 'i') {
+	    	    	double roll;
+	    	    	double pitch;
+	    	    	double yaw;
+	    	    	double thrust;
+	    	    	if (!(ss >> roll >> pitch >> yaw >> thrust)) {
+	    	    		cout << "cmd error" << endl;
+	    	    		break;
+	    	    	} else {
+	    	    		//cout << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
+	    	    		api.set_manual_control(roll, pitch, yaw, thrust);
+	    	    	}
+	    	    } else if (cmd == 's') {
+	    	    	shutdown = true;
+	    	    	break;
+	    	    }
+			}
+		}
+	}
+
+    // shutdown
+    remove(PIPE_NAME);
+	api.disarm();
+}
+
 void
 commands(Autopilot_Interface &api)
 {
-
-#if 0
-	// --------------------------------------------------------------------------
-	//   START OFFBOARD MODE
-	// --------------------------------------------------------------------------
-
-	api.enable_offboard_control();
-	usleep(100); // give some time to let it sink in
-
-	// now the autopilot is accepting setpoint commands
-
-
-	// --------------------------------------------------------------------------
-	//   SEND OFFBOARD COMMANDS
-	// --------------------------------------------------------------------------
-	printf("SEND OFFBOARD COMMANDS\n");
-
-	// initialize command data strtuctures
-	mavlink_set_position_target_local_ned_t sp;
-	mavlink_set_position_target_local_ned_t ip = api.initial_position;
-
-	// autopilot_interface.h provides some helper functions to build the command
-
-
-	// Example 1 - Set Velocity
-//	set_velocity( -1.0       , // [m/s]
-//				  -1.0       , // [m/s]
-//				   0.0       , // [m/s]
-//				   sp        );
-
-	// Example 2 - Set Position
-	 set_position( ip.x - 5.0 , // [m]
-			 	   ip.y - 5.0 , // [m]
-				   ip.z       , // [m]
-				   sp         );
-
-
-	// Example 1.2 - Append Yaw Command
-	set_yaw( ip.yaw , // [rad]
-			 sp     );
-
-	// SEND THE COMMAND
-	api.update_setpoint(sp);
-	// NOW pixhawk will try to move
-
-	// Wait for 8 seconds, check position
-	for (int i=0; i < 8; i++)
-	{
-		mavlink_local_position_ned_t pos = api.current_messages.local_position_ned;
-		printf("%i CURRENT POSITION XYZ = [ % .4f , % .4f , % .4f ] \n", i, pos.x, pos.y, pos.z);
-		sleep(1);
-	}
-
-	printf("\n");
-
-
-	// --------------------------------------------------------------------------
-	//   STOP OFFBOARD MODE
-	// --------------------------------------------------------------------------
-
-	api.disable_offboard_control();
-
-	// now pixhawk isn't listening to setpoint commands
-#endif
-
-#if 1
 	const double v = 0.5;
 	const double HOVER_THRUST = 0.5;
 	unsigned delay = 1;
@@ -272,9 +274,6 @@ commands(Autopilot_Interface &api)
 	sleep(6);
 
 	api.disarm();
-#else
-	sleep(10);
-#endif
 
 	// --------------------------------------------------------------------------
 	//   GET A MESSAGE
