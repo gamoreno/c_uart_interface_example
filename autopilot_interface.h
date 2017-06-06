@@ -264,6 +264,13 @@ public:
 	void enable_offboard_control();
 	void disable_offboard_control();
 
+	void arm();
+	void disarm();
+
+	void send_manual_control(double roll, double pitch, double yaw, double throttle);
+	void set_manual_control(double roll, double pitch, double yaw, double throttle);
+	void set_posctl_mode();
+
 	void start();
 	void stop();
 
@@ -284,11 +291,21 @@ private:
 
 	mavlink_set_position_target_local_ned_t current_setpoint;
 
+	struct Manual_Input {
+		double roll;
+		double pitch;
+		double yaw;
+		double thrust;
+	} current_manual_input;
+
 	void read_thread();
 	void write_thread(void);
 
 	int toggle_offboard_control( bool flag );
 	void write_setpoint();
+
+	int arm_disarm(bool arm);
+
 
 };
 

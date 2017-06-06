@@ -53,7 +53,8 @@
 // ------------------------------------------------------------------------------
 
 #include "autopilot_interface.h"
-
+#include <algorithm>
+#include <iostream>
 
 // ----------------------------------------------------------------------------------
 //   Time
@@ -268,6 +269,7 @@ read_messages()
 					mavlink_msg_heartbeat_decode(&message, &(current_messages.heartbeat));
 					current_messages.time_stamps.heartbeat = get_time_usec();
 					this_timestamps.heartbeat = current_messages.time_stamps.heartbeat;
+					printf("MAVLINK_MSG_ID_HEARTBEAT:%x %x\n", current_messages.heartbeat.base_mode, current_messages.heartbeat.custom_mode);
 					break;
 				}
 
@@ -547,6 +549,92 @@ toggle_offboard_control( bool flag )
 	return len;
 }
 
+/**
+ * translate from [-1.0,1.0] to [-1000,1000] truncated if needed
+ */
+static int16_t translateInput(double x) {
+	return std::max(-1.0, std::min(1.0, x)) * 1000;
+}
+
+void Autopilot_Interface::send_manual_control(double roll, double pitch, double yaw, double thrust) {
+	mavlink_message_t msg;
+	mavlink_msg_manual_control_pack(system_id, autopilot_id, &msg, system_id,
+			translateInput(roll), translateInput(pitch),
+			translateInput(thrust), translateInput(yaw), 0);
+
+	int len = serial_port->write_message(msg);
+}
+
+void Autopilot_Interface::set_manual_control(double roll, double pitch, double yaw, double thrust) {
+	current_manual_input.roll = roll;
+	current_manual_input.pitch = pitch;
+	current_manual_input.thrust = thrust;
+	current_manual_input.yaw = yaw;
+}
+
+
+int
+Autopilot_Interface::
+arm_disarm( bool arm )
+{
+	// Prepare command for off-board mode
+	mavlink_command_long_t com = { 0 };
+	com.target_system    = system_id;
+	com.target_component = autopilot_id;
+	com.command          = MAV_CMD_COMPONENT_ARM_DISARM;
+	com.confirmation     = 0;
+	com.param1           = arm ? 1.0 : 0.0;
+
+	// Encode
+	mavlink_message_t message;
+	mavlink_msg_command_long_encode(system_id, companion_id, &message, &com);
+
+	// Send the message
+	int len = serial_port->write_message(message);
+
+	// Done!
+	return len;
+}
+
+void Autopilot_Interface::arm() {
+	arm_disarm(true);
+}
+
+void Autopilot_Interface::disarm() {
+	arm_disarm(false);
+}
+
+
+void Autopilot_Interface::set_posctl_mode() {
+	const uint32_t PX4_CUSTOM_MAIN_MODE_POSCTL = 3;
+
+	// we need the current mode
+	while (current_messages.time_stamps.heartbeat == 0) {
+		sleep(1);
+	}
+
+	uint8_t new_mode = current_messages.heartbeat.base_mode & MAV_MODE_FLAG_DECODE_POSITION_HIL;
+	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+
+
+	std::cout << "Old mode:" << std::hex << (unsigned) current_messages.heartbeat.base_mode
+			<< " new mode:" << std::hex << (unsigned) new_mode << std::endl;
+
+	mavlink_command_long_t com = { 0 };
+	com.target_system    = system_id;
+	com.target_component = autopilot_id;
+	com.command          = MAV_CMD_DO_SET_MODE;
+	com.confirmation     = 0;
+	com.param1           = new_mode;
+	com.param2			 = PX4_CUSTOM_MAIN_MODE_POSCTL;
+
+	// Encode
+	mavlink_message_t message;
+	mavlink_msg_command_long_encode(system_id, companion_id, &message, &com);
+
+	// Send the message
+	int len = serial_port->write_message(message);
+}
 
 // ------------------------------------------------------------------------------
 //   STARTUP
@@ -814,7 +902,7 @@ write_thread(void)
 	current_setpoint = sp;
 
 	// write a message and signal writing
-	write_setpoint();
+	//write_setpoint();
 	writing_status = true;
 
 	// Pixhawk needs to see off-board commands at minimum 2Hz,
@@ -822,7 +910,9 @@ write_thread(void)
 	while ( !time_to_exit )
 	{
 		usleep(250000);   // Stream at 4Hz
-		write_setpoint();
+		//write_setpoint();
+		send_manual_control(current_manual_input.roll, current_manual_input.pitch,
+				current_manual_input.yaw, current_manual_input.thrust);
 	}
 
 	// signal end

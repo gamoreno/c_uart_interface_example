@@ -168,10 +168,19 @@ top (int argc, char **argv)
 //   COMMANDS
 // ------------------------------------------------------------------------------
 
+
+void test_manual_control(Autopilot_Interface &api, double roll, double pitch, double yaw, double thrust) {
+	api.set_manual_control(roll, pitch, yaw, thrust);
+	sleep(1);
+	api.set_manual_control(0.0, 0.0, 0.0, thrust);
+	sleep(3);
+}
+
 void
 commands(Autopilot_Interface &api)
 {
 
+#if 0
 	// --------------------------------------------------------------------------
 	//   START OFFBOARD MODE
 	// --------------------------------------------------------------------------
@@ -233,7 +242,39 @@ commands(Autopilot_Interface &api)
 	api.disable_offboard_control();
 
 	// now pixhawk isn't listening to setpoint commands
+#endif
 
+#if 1
+	const double v = 0.5;
+	const double HOVER_THRUST = 0.5;
+	unsigned delay = 1;
+
+	api.arm();
+	sleep(2);
+
+	api.set_posctl_mode();
+	sleep(2);
+
+
+	api.set_manual_control(0.0, 0.0, 0.0, 1.0);
+	sleep(delay);
+	api.set_manual_control(0.0, 0.0, 0.0, HOVER_THRUST);
+	sleep(3);
+
+	test_manual_control(api, -v, 0.0, 0.0, HOVER_THRUST);
+	test_manual_control(api, v, 0.0, 0.0, HOVER_THRUST);
+	test_manual_control(api, 0.0, -v, 0.0, HOVER_THRUST);
+	test_manual_control(api, 0.0, v, 0.0, HOVER_THRUST);
+	test_manual_control(api, 0.0, 0.0, -v, HOVER_THRUST);
+	test_manual_control(api, 0.0, 0.0, v, HOVER_THRUST);
+
+	api.set_manual_control(0.0, 0.0, 0.0, 0.0);
+	sleep(6);
+
+	api.disarm();
+#else
+	sleep(10);
+#endif
 
 	// --------------------------------------------------------------------------
 	//   GET A MESSAGE
@@ -251,7 +292,7 @@ commands(Autopilot_Interface &api)
 	// hires imu
 	mavlink_highres_imu_t imu = messages.highres_imu;
 	printf("Got message HIGHRES_IMU (spec: https://pixhawk.ethz.ch/mavlink/#HIGHRES_IMU)\n");
-	printf("    ap time:     %llu \n", imu.time_usec);
+	printf("    ap time:     %lu \n", imu.time_usec);
 	printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
 	printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
 	printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
