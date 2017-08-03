@@ -56,6 +56,8 @@
 #include <algorithm>
 #include <iostream>
 
+#define RC_IN_MODE_1 1
+
 // ----------------------------------------------------------------------------------
 //   Time
 // ------------------- ---------------------------------------------------------------
@@ -581,7 +583,11 @@ void Autopilot_Interface::set_manual_control(double roll, double pitch, double y
 
 void Autopilot_Interface::click_button(unsigned button) {
 	if (button < MAX_BUTTONS) {
+#ifdef RC_IN_MODE_1
+		current_manual_input.buttons ^=	1 << button;
+#else
 		button_ticks_left[button] = 1 + WRITE_HZ / 2;
+#endif
 	}
 }
 
