@@ -68,6 +68,10 @@ using namespace std;
 
 const char* PIPE_NAME = "/tmp/manual_input_pipe";
 
+#define REBOOT_SWITCH_CHANNEL 6
+#define SNAPSHOT_SWITCH_CHANNEL 7
+
+
 void remoteCommands(Autopilot_Interface &api);
 
 // ------------------------------------------------------------------------------
@@ -214,27 +218,51 @@ void remoteCommands(Autopilot_Interface &api)
 		if (pipe) {
 			std::string line;
 			while (std::getline(pipe, line)) {
-				//cout << "got input [" << line << "]" << endl;
-	    	    std::istringstream ss(line);
-	    	    char cmd;
-	    	    ss >> cmd;
-	    	    //cout << "got cmd [" << cmd << "]" << endl;
-	    	    if (cmd == 'i') {
-	    	    	double roll;
-	    	    	double pitch;
-	    	    	double yaw;
-	    	    	double thrust;
-	    	    	if (!(ss >> roll >> pitch >> yaw >> thrust)) {
-	    	    		cout << "cmd error" << endl;
-	    	    		break;
-	    	    	} else {
-	    	    		//cout << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
-	    	    		api.set_manual_control(roll, pitch, yaw, thrust);
-	    	    	}
-	    	    } else if (cmd == 's') {
-	    	    	shutdown = true;
-	    	    	break;
-	    	    }
+				cout << "got input [" << line << "]" << endl;
+		    	    std::istringstream ss(line);
+		    	    char cmd;
+		    	    ss >> cmd;
+		    	    //cout << "got cmd [" << cmd << "]" << endl;
+		    	    if (cmd == 'i') {
+		    	    	double roll;
+		    	    	double pitch;
+		    	    	double yaw;
+		    	    	double thrust;
+		    	    	if (!(ss >> roll >> pitch >> yaw >> thrust)) {
+		    	    		cout << "cmd error" << endl;
+					break;
+		    	    	} else {
+		    	    		//cout << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
+		    	    		api.set_manual_control(roll, pitch, yaw, thrust);
+		    	    	}
+		    	    } else if (cmd == 'r') {
+				api.click_button(1);
+#if 0
+				string arg;
+				getline(ss, arg);
+				if (arg.length() > 0 && arg[0] == ' ') {
+					arg = arg.substr(1);
+				}
+				if (arg == "off") {
+					cout << "turning reboots off" << endl;
+					api.set_buttons(0);
+				} else if (arg == "on") {
+					cout << "turning reboots on" << endl;
+					api.set_buttons(1 << (REBOOT_SWITCH_CHANNEL - 5));
+				} else if (arg == "snapshot") {
+					cout << "taking snapshot" << endl;
+					api.set_buttons(1 << (SNAPSHOT_SWITCH_CHANNEL - 5));
+				} else {
+					cout << "cmd error: arg was [" << arg << "], format is r {on|off|snapshot}" << endl;
+					break;
+				}
+#endif
+		    	    } else if (cmd == 'c') {
+				api.click_button(2);
+		    	    } else if (cmd == 's') {
+		    	    	shutdown = true;
+				break;
+		    	    }
 			}
 		}
 	}

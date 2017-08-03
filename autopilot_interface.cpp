@@ -556,12 +556,19 @@ static int16_t translateInput(double x) {
 	return std::max(-1.0, std::min(1.0, x)) * 1000;
 }
 
-void Autopilot_Interface::send_manual_control(double roll, double pitch, double yaw, double thrust) {
+void Autopilot_Interface::send_manual_control(double roll, double pitch, double yaw,
+						double thrust, uint16_t buttons) {
 	mavlink_message_t msg;
+#ifdef RC_IN_MODE_1 
+	// this is for mode 1
 	mavlink_msg_manual_control_pack(system_id, autopilot_id, &msg, system_id,
 			translateInput(roll), translateInput(pitch),
-			translateInput(thrust), translateInput(yaw), 0);
-
+			translateInput(thrust), translateInput(yaw), buttons);
+#else
+	mavlink_msg_manual_control_pack(system_id, autopilot_id, &msg, system_id,
+			translateInput(roll), translateInput(pitch),
+			translateInput(yaw), translateInput(thrust), buttons);
+#endif
 	int len = serial_port->write_message(msg);
 }
 
@@ -570,6 +577,12 @@ void Autopilot_Interface::set_manual_control(double roll, double pitch, double y
 	current_manual_input.pitch = pitch;
 	current_manual_input.thrust = thrust;
 	current_manual_input.yaw = yaw;
+}
+
+void Autopilot_Interface::click_button(unsigned button) {
+	if (button < MAX_BUTTONS) {
+		button_ticks_left[button] = 1 + WRITE_HZ / 2;
+	}
 }
 
 
@@ -910,10 +923,22 @@ write_thread(void)
 	// otherwise it will go into fail safe
 	while ( !time_to_exit )
 	{
-		usleep(250000);   // Stream at 4Hz
+		//usleep(250000);   // Stream at 4Hz
+		usleep(1000000 / WRITE_HZ);
 		//write_setpoint();
+		
+#ifndef RC_IN_MODE_1
+		current_manual_input.buttons = 0;
+		for (unsigned b = 0; b < MAX_BUTTONS; b++) {
+			if (button_ticks_left[b] > 0) {
+				button_ticks_left[b]--;
+				current_manual_input.buttons |= 1 << b;
+			}
+		}
+#endif
 		send_manual_control(current_manual_input.roll, current_manual_input.pitch,
-				current_manual_input.yaw, current_manual_input.thrust);
+				current_manual_input.yaw, current_manual_input.thrust,
+				current_manual_input.buttons);
 	}
 
 	// signal end

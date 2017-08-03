@@ -267,8 +267,10 @@ public:
 	void arm();
 	void disarm();
 
-	void send_manual_control(double roll, double pitch, double yaw, double throttle);
+	void send_manual_control(double roll, double pitch, double yaw, double throttle,
+				uint16_t buttons);
 	void set_manual_control(double roll, double pitch, double yaw, double throttle);
+	void click_button(unsigned button);
 	void set_posctl_mode();
 
 	void start();
@@ -296,12 +298,18 @@ private:
 		double pitch;
 		double yaw;
 		double thrust;
+		uint16_t buttons;
 
 		/*
 		 * all have [-1,+1] range except thrust, with [0,1] range
 		 */
-		Manual_Input() : roll(0.0), pitch(0.0), yaw(0.0), thrust(0.4) {};
+		Manual_Input() : roll(0.0), pitch(0.0), yaw(0.0), thrust(0.4),
+				buttons(0) {};
 	} current_manual_input;
+
+	static const unsigned MAX_BUTTONS = 4;
+	static const unsigned WRITE_HZ = 8;
+	uint16_t button_ticks_left[MAX_BUTTONS];
 
 	void read_thread();
 	void write_thread(void);
