@@ -656,6 +656,26 @@ void Autopilot_Interface::set_posctl_mode() {
 	int len = serial_port->write_message(message);
 }
 
+void Autopilot_Interface::set_reboot_period(int32_t period) {
+  mavlink_param_set_t param_set;
+  param_set.target_system    = system_id;
+  param_set.target_component = autopilot_id;
+  strncpy(param_set.param_id, "YL_REBOOT_PERIOD", 16);
+  *((int32_t*) &param_set.param_value) = period;
+  param_set.param_type = MAV_PARAM_TYPE_INT32;
+
+  mavlink_message_t message;
+  mavlink_msg_param_set_encode(system_id, companion_id, &message, &param_set);
+
+  int len = write_message(message);
+  if ( len <= 0 ) {
+    fprintf(stderr,"WARNING: could not send PARAM_SET command\n");
+  }
+  
+  return;
+}
+
+
 // ------------------------------------------------------------------------------
 //   STARTUP
 // ------------------------------------------------------------------------------

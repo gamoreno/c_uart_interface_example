@@ -272,6 +272,7 @@ public:
 	void set_manual_control(double roll, double pitch, double yaw, double throttle);
 	void click_button(unsigned button);
 	void set_posctl_mode();
+	void set_reboot_period(int32_t period);
 
 	void start();
 	void stop();

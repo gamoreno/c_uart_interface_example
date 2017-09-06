@@ -259,7 +259,15 @@ void remoteCommands(Autopilot_Interface &api)
 #endif
 		    	    } else if (cmd == 'c') {
 				api.click_button(2);
-		    	    } else if (cmd == 's') {
+			    } else if (cmd == 'p') {
+			      int32_t period;
+			      if (!(ss >> period)) {
+				cout << "cmd error" << endl;
+			      } else {
+				cout << "setting reboot period to " << std::dec << period << endl;
+				api.set_reboot_period(period);
+			      }
+			    } else if (cmd == 's') {
 		    	    	shutdown = true;
 				break;
 		    	    }
