@@ -53,16 +53,8 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
+#include "Port.h"
 
-#include <cstdlib>
-#include <stdio.h>   // Standard input/output definitions
-#include <unistd.h>  // UNIX standard function definitions
-#include <fcntl.h>   // File control definitions
-#include <termios.h> // POSIX terminal control definitions
-#include <pthread.h> // This uses POSIX Threads
-#include <signal.h>
-
-#include <common/mavlink.h>
 
 
 // ------------------------------------------------------------------------------
@@ -80,19 +72,6 @@
 #endif
 
 
-// Status flags
-#define SERIAL_PORT_OPEN   1;
-#define SERIAL_PORT_CLOSED 0;
-#define SERIAL_PORT_ERROR -1;
-
-
-// ------------------------------------------------------------------------------
-//   Prototypes
-// ------------------------------------------------------------------------------
-
-//class Serial_Port;
-
-
 
 // ----------------------------------------------------------------------------------
 //   Serial Port Manager Class
@@ -106,43 +85,32 @@
  * a serialization interface.  To help with read and write pthreading, it
  * gaurds any port operation with a pthread mutex.
  */
-class Serial_Port
+class Serial_Port : public Port
 {
 
 public:
 
 	Serial_Port();
 	Serial_Port(const char *uart_name_, int baudrate_);
-	void initialize_defaults();
-	~Serial_Port();
+	virtual ~Serial_Port();
 
-	bool debug;
+protected:
+	virtual void open_port();
+	virtual void close_port();
+	virtual int _read_port(uint8_t &cp);
+	virtual int _write_port(char *buf, unsigned len);
+
+	virtual void initialize_defaults();
+
 	const char *uart_name;
 	int  baudrate;
-	int  status;
-
-	int read_message(mavlink_message_t &message);
-	int write_message(const mavlink_message_t &message);
-
-	void open_serial();
-	void close_serial();
-
-	void start();
-	void stop();
-
-	void handle_quit( int sig );
 
 private:
 
 	int  fd;
-	mavlink_status_t lastStatus;
-	pthread_mutex_t  lock;
 
 	int  _open_port(const char* port);
 	bool _setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control);
-	int  _read_port(uint8_t &cp);
-	int _write_port(char *buf, unsigned len);
-
 };
 
 

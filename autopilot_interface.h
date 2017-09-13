@@ -55,11 +55,12 @@
 //   Includes
 // ------------------------------------------------------------------------------
 
-#include "serial_port.h"
+#include "Port.h"
 
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
+#include <memory>
 
 #include <common/mavlink.h>
 
@@ -242,7 +243,7 @@ class Autopilot_Interface
 public:
 
 	Autopilot_Interface();
-	Autopilot_Interface(Serial_Port *serial_port_);
+	Autopilot_Interface(std::shared_ptr<Port> port_);
 	~Autopilot_Interface();
 
 	char reading_status;
@@ -285,7 +286,7 @@ public:
 
 private:
 
-	Serial_Port *serial_port;
+	std::shared_ptr<Port> port;
 
 	bool time_to_exit;
 

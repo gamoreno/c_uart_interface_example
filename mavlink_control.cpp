@@ -64,6 +64,10 @@
 #include <fstream>
 #include <sstream>
 
+#include <stdlib.h>
+#include "utils.h"
+#include "serial_port.h"
+
 using namespace std;
 
 const char* PIPE_NAME = "/tmp/manual_input_pipe";
@@ -78,41 +82,8 @@ void remoteCommands(Autopilot_Interface &api);
 //   TOP
 // ------------------------------------------------------------------------------
 int
-top (int argc, char **argv)
+top()
 {
-
-	// --------------------------------------------------------------------------
-	//   PARSE THE COMMANDS
-	// --------------------------------------------------------------------------
-
-	// Default input arguments
-#ifdef __APPLE__
-	char *uart_name = (char*)"/dev/tty.usbmodem1";
-#else
-	char *uart_name = (char*)"/dev/ttyUSB0";
-#endif
-	int baudrate = 57600;
-
-	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate);
-
-
-	// --------------------------------------------------------------------------
-	//   PORT and THREAD STARTUP
-	// --------------------------------------------------------------------------
-
-	/*
-	 * Instantiate a serial port object
-	 *
-	 * This object handles the opening and closing of the offboard computer's
-	 * serial port over which it will communicate to an autopilot.  It has
-	 * methods to read and write a mavlink_message_t object.  To help with read
-	 * and write in the context of pthreading, it gaurds port operations with a
-	 * pthread mutex lock.
-	 *
-	 */
-	Serial_Port serial_port(uart_name, baudrate);
-
 
 	/*
 	 * Instantiate an autopilot interface object
@@ -129,7 +100,7 @@ top (int argc, char **argv)
 	 * otherwise the vehicle will go into failsafe.
 	 *
 	 */
-	Autopilot_Interface autopilot_interface(&serial_port);
+	Autopilot_Interface autopilot_interface(port);
 
 	/*
 	 * Setup interrupt signal handler
@@ -139,7 +110,6 @@ top (int argc, char **argv)
 	 * The handler in this example needs references to the above objects.
 	 *
 	 */
-	serial_port_quit         = &serial_port;
 	autopilot_interface_quit = &autopilot_interface;
 	signal(SIGINT,quit_handler);
 
@@ -147,7 +117,7 @@ top (int argc, char **argv)
 	 * Start the port and autopilot_interface
 	 * This is where the port is opened, and read and write threads are started.
 	 */
-	serial_port.start();
+	port->start();
 	autopilot_interface.start();
 
 
@@ -170,7 +140,7 @@ top (int argc, char **argv)
 	 * Now that we are done we can stop the threads and close the port
 	 */
 	autopilot_interface.stop();
-	serial_port.stop();
+	port->stop();
 
 
 	// --------------------------------------------------------------------------
@@ -352,47 +322,42 @@ commands(Autopilot_Interface &api)
 // ------------------------------------------------------------------------------
 // throws EXIT_FAILURE if could not open the port
 void
-parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate)
+parse_commandline(int argc, char **argv)
 {
-
 	// string for command line usage
-	const char *commandline_usage = "usage: mavlink_serial -d <devicename> -b <baudrate>";
+	const char *commandline_usage = "usage: mavlink_control [serial:device:baud|udp:host:port]";
 
-	// Read input arguments
-	for (int i = 1; i < argc; i++) { // argv[0] is "mavlink"
+	// Default input arguments
+#ifdef __APPLE__
+	char *uart_name = (char*)"/dev/tty.usbmodem1";
+#else
+	char *uart_name = (char*)"/dev/ttyUSB0";
+#endif
+	int baudrate = 57600;
 
-		// Help
-		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			printf("%s\n",commandline_usage);
+	if (argc == 1) {
+		port = std::make_shared<Serial_Port>(uart_name, baudrate);
+	} else if (argc == 2) {
+		auto args = splitString(argv[1], ":");
+		if (args.size() != 3) {
+			printf("%s\n", commandline_usage);
 			throw EXIT_FAILURE;
 		}
-
-		// UART device ID
-		if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) {
-			if (argc > i + 1) {
-				uart_name = argv[i + 1];
-
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
+		if (args[0] == "serial") {
+			port = std::make_shared<Serial_Port>(args[1].c_str(), atoi(args[2].c_str()));
+		} else if (args[0] == "udp") {
+			printf("UDP port not implemented\n");
+			throw EXIT_FAILURE;
+		} else {
+			printf("%s\n", commandline_usage);
+			throw EXIT_FAILURE;
 		}
-
-		// Baud rate
-		if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--baud") == 0) {
-			if (argc > i + 1) {
-				baudrate = atoi(argv[i + 1]);
-
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
-		}
-
+	} else {
+		printf("%s\n", commandline_usage);
+		throw EXIT_FAILURE;
 	}
-	// end: for each input argument
 
-	// Done!
+
 	return;
 }
 
@@ -416,7 +381,7 @@ quit_handler( int sig )
 
 	// serial port
 	try {
-		serial_port_quit->handle_quit(sig);
+		port->handle_quit(sig);
 	}
 	catch (int error){}
 
@@ -435,7 +400,8 @@ main(int argc, char **argv)
 	// This program uses throw, wrap one big try/catch here
 	try
 	{
-		int result = top(argc,argv);
+		parse_commandline(argc,argv);
+		int result = top();
 		return result;
 	}
 
