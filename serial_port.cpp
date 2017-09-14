@@ -416,4 +416,60 @@ _write_port(char *buf, unsigned len)
 	return bytesWritten;
 }
 
+// ------------------------------------------------------------------------------
+//   Read from Serial
+// ------------------------------------------------------------------------------
+int
+Serial_Port::
+read_message(mavlink_message_t &message)
+{
+	uint8_t          cp;
+	mavlink_status_t status;
+	uint8_t          msgReceived = false;
 
+	// --------------------------------------------------------------------------
+	//   READ FROM PORT
+	// --------------------------------------------------------------------------
+
+	// this function locks the port during read
+	int result = _read_port(cp);
+
+
+	// --------------------------------------------------------------------------
+	//   PARSE MESSAGE
+	// --------------------------------------------------------------------------
+	if (result > 0)
+	{
+//		printf("received2!\n");
+		// the parsing
+		printf("parseState=%d data=%02x\n", status.parse_state, cp);
+		msgReceived = mavlink_parse_char(MAVLINK_COMM_1, cp, &message, &status);
+
+		// check for dropped packets
+		if ( (lastStatus.packet_rx_drop_count != status.packet_rx_drop_count) && debug )
+		{
+			printf("ERROR: DROPPED %d PACKETS\n", status.packet_rx_drop_count);
+			unsigned char v=cp;
+			fprintf(stderr,"%02x ", v);
+		}
+		lastStatus = status;
+	}
+
+	// Couldn't read from port
+	else
+	{
+		fprintf(stderr, "ERROR: Could not read from port\n");
+	}
+
+	// --------------------------------------------------------------------------
+	//   DEBUGGING REPORTS
+	// --------------------------------------------------------------------------
+	if(msgReceived && debug)
+	{
+		// Report info
+		printMessage(message);
+	}
+
+	// Done!
+	return msgReceived;
+}

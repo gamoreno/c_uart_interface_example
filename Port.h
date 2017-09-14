@@ -23,7 +23,7 @@ class Port {
 public:
 	virtual ~Port();
 
-	virtual int read_message(mavlink_message_t &message);
+	virtual int read_message(mavlink_message_t &message) = 0;
 	virtual int write_message(const mavlink_message_t &message);
 
 	virtual void start();
@@ -37,8 +37,8 @@ protected:
 	virtual void open_port() = 0;
 	virtual void close_port() = 0;
 
-	virtual int _read_port(uint8_t &cp) = 0;
 	virtual int _write_port(char *buf, unsigned len) = 0;
+	void printMessage(mavlink_message_t& message);
 
 	bool debug;
 	int  status;

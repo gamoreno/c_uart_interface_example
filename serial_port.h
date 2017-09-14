@@ -94,10 +94,11 @@ public:
 	Serial_Port(const char *uart_name_, int baudrate_);
 	virtual ~Serial_Port();
 
+	virtual int read_message(mavlink_message_t &message);
+
 protected:
 	virtual void open_port();
 	virtual void close_port();
-	virtual int _read_port(uint8_t &cp);
 	virtual int _write_port(char *buf, unsigned len);
 
 	virtual void initialize_defaults();
@@ -111,6 +112,7 @@ private:
 
 	int  _open_port(const char* port);
 	bool _setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control);
+	int _read_port(uint8_t &cp);
 };
 
 

@@ -67,6 +67,7 @@
 #include <stdlib.h>
 #include "utils.h"
 #include "serial_port.h"
+#include "UDPPort.h"
 
 using namespace std;
 
@@ -325,38 +326,52 @@ void
 parse_commandline(int argc, char **argv)
 {
 	// string for command line usage
-	const char *commandline_usage = "usage: mavlink_control [serial:device:baud|udp:host:port]";
+	const char *commandline_usage = "usage: mavlink_control serial[:device[:baud]]|udp[:host[:port[:localPort]]]";
 
-	// Default input arguments
-#ifdef __APPLE__
-	char *uart_name = (char*)"/dev/tty.usbmodem1";
-#else
-	char *uart_name = (char*)"/dev/ttyUSB0";
-#endif
-	int baudrate = 57600;
-
-	if (argc == 1) {
-		port = std::make_shared<Serial_Port>(uart_name, baudrate);
-	} else if (argc == 2) {
+	if (argc == 2) {
 		auto args = splitString(argv[1], ":");
-		if (args.size() != 3) {
-			printf("%s\n", commandline_usage);
-			throw EXIT_FAILURE;
-		}
 		if (args[0] == "serial") {
-			port = std::make_shared<Serial_Port>(args[1].c_str(), atoi(args[2].c_str()));
+
+			// defaults
+#ifdef __APPLE__
+			const char *uart_name = (char*)"/dev/tty.usbmodem1";
+#else
+			const char *uart_name = (char*)"/dev/ttyUSB0";
+#endif
+			int baudrate = 57600;
+
+			if (args.size() > 1) {
+				uart_name = args[1].c_str();
+			}
+			if (args.size() > 2) {
+				baudrate = atoi(args[2].c_str());
+			}
+			port = std::make_shared<Serial_Port>(uart_name, baudrate);
 		} else if (args[0] == "udp") {
-			printf("UDP port not implemented\n");
-			throw EXIT_FAILURE;
-		} else {
-			printf("%s\n", commandline_usage);
-			throw EXIT_FAILURE;
+
+			// defaults
+			string host = "localhost";
+			string remotePort = "14557";
+			string localPort = "14540";
+
+			if (args.size() > 1) {
+				host = args[1];
+			}
+			if (args.size() > 2) {
+				remotePort = args[2];
+			}
+			if (args.size() > 3) {
+				localPort = args[3];
+			}
+
+			port = std::make_shared<UDP_Port>(host, remotePort, localPort);
 		}
-	} else {
+	}
+
+	if (!port) {
 		printf("%s\n", commandline_usage);
 		throw EXIT_FAILURE;
 	}
-
 
 	return;
 }
