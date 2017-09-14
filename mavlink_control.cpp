@@ -53,23 +53,52 @@
 //   Includes
 // ------------------------------------------------------------------------------
 
-#include "mavlink_control.h"
+#include <iostream>
+#include <stdio.h>
+#include <cstdlib>
+#include <unistd.h>
+#include <cmath>
+#include <string.h>
+#include <inttypes.h>
+#include <fstream>
+#include <signal.h>
+#include <time.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <cstring>
 #include <cerrno>
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <common/mavlink.h>
+#include <memory>
 
-#include <stdlib.h>
 #include "utils.h"
 #include "serial_port.h"
 #include "UDPPort.h"
+#include "autopilot_interface.h"
 
 using namespace std;
+
+
+// ------------------------------------------------------------------------------
+//   Prototypes
+// ------------------------------------------------------------------------------
+
+int main(int argc, char **argv);
+int top();
+
+void commands(Autopilot_Interface &autopilot_interface);
+bool parse_commandline(int argc, char **argv);
+
+// quit handler
+Autopilot_Interface *autopilot_interface_quit;
+std::shared_ptr<Port> port;
+void quit_handler(int sig);
+
+
 
 const char* PIPE_NAME = "/tmp/manual_input_pipe";
 
@@ -322,7 +351,7 @@ commands(Autopilot_Interface &api)
 //   Parse Command Line
 // ------------------------------------------------------------------------------
 // throws EXIT_FAILURE if could not open the port
-void
+bool
 parse_commandline(int argc, char **argv)
 {
 	// string for command line usage
@@ -370,10 +399,10 @@ parse_commandline(int argc, char **argv)
 
 	if (!port) {
 		printf("%s\n", commandline_usage);
-		throw EXIT_FAILURE;
+		return false;
 	}
 
-	return;
+	return true;
 }
 
 
@@ -412,10 +441,14 @@ quit_handler( int sig )
 int
 main(int argc, char **argv)
 {
+	// parse command line and instantiate a port
+	if (!parse_commandline(argc,argv)) {
+		return 1;
+	}
+
 	// This program uses throw, wrap one big try/catch here
 	try
 	{
-		parse_commandline(argc,argv);
 		int result = top();
 		return result;
 	}
@@ -423,9 +456,8 @@ main(int argc, char **argv)
 	catch ( int error )
 	{
 		fprintf(stderr,"mavlink_control threw exception %i \n" , error);
-		return error;
+		return 1;
 	}
-
 }
 
 

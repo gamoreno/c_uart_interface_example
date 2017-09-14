@@ -23,6 +23,7 @@ protected:
 	virtual void close_port();
 	virtual int _write_port(char *buf, unsigned len);
 
+private:
 	std::string host;
 	std::string port;
 	std::string localPort;
@@ -30,7 +31,6 @@ protected:
 	int sockfd = -1;
 	struct addrinfo* remoteAddress = 0;
 
-private:
 	int _read_port(uint8_t* buffer, size_t bufferLen);
 };
 
