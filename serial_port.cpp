@@ -440,9 +440,8 @@ read_message(mavlink_message_t &message)
 	// --------------------------------------------------------------------------
 	if (result > 0)
 	{
-//		printf("received2!\n");
+
 		// the parsing
-		printf("parseState=%d data=%02x\n", status.parse_state, cp);
 		msgReceived = mavlink_parse_char(MAVLINK_COMM_1, cp, &message, &status);
 
 		// check for dropped packets
