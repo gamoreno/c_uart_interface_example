@@ -633,11 +633,15 @@ void Autopilot_Interface::set_posctl_mode() {
 	while (current_messages.time_stamps.heartbeat == 0) {
 		sleep(1);
 	}
-
+#if 1
 	uint8_t new_mode = current_messages.heartbeat.base_mode & MAV_MODE_FLAG_DECODE_POSITION_HIL;
 	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-
-
+#else
+	uint8_t new_mode = current_messages.heartbeat.base_mode
+			& (MAV_MODE_FLAG_DECODE_POSITION_HIL | MAV_MODE_FLAG_DECODE_POSITION_SAFETY);
+	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+			| MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
+#endif
 	std::cout << "Old mode:" << std::hex << (unsigned) current_messages.heartbeat.base_mode
 			<< " new mode:" << std::hex << (unsigned) new_mode << std::endl;
 

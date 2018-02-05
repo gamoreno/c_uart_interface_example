@@ -3,6 +3,8 @@ echo i 0.0 0.0 0.0 0.75 > $PIPE
 sleep 4
 echo i 0.0 0.0 0.0 0.5 > $PIPE
 sleep 3
+#echo r > $PIPE
+sleep 3
 echo i 0.5 0.0 0.0 0.5 > $PIPE
 sleep 3
 echo i 0.0 0.5 0.0 0.5 > $PIPE

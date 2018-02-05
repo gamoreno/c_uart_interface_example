@@ -205,11 +205,14 @@ void remoteCommands(Autopilot_Interface &api)
 		}
 	}
 
+	api.set_manual_control(0.0, 0.0, 0.0, 0.0);
+
 	api.arm();
-	sleep(1);
+	sleep(2);
 
 	api.set_posctl_mode();
-	sleep(1);
+	sleep(2);
+	api.set_posctl_mode();
 
 
 	bool shutdown = false;
@@ -276,6 +279,7 @@ void remoteCommands(Autopilot_Interface &api)
 	}
 
     // shutdown
+	cout << "shutting down..." << endl;
     remove(PIPE_NAME);
 	api.disarm();
 }

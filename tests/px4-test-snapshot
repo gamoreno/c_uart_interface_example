@@ -1,0 +1,10 @@
+PIPE=/tmp/manual_input_pipe
+echo i 0.0 0.0 0.0 0.75 > $PIPE
+sleep 4
+echo i 0.0 0.0 0.0 0.5 > $PIPE
+sleep 3
+echo c > $PIPE
+sleep 5
+echo s > $PIPE
+
+
