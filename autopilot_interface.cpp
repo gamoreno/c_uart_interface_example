@@ -642,7 +642,7 @@ void Autopilot_Interface::set_posctl_mode() {
 	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
 			| MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
 #endif
-	std::cout << "Old mode:" << std::hex << (unsigned) current_messages.heartbeat.base_mode
+	std::cerr << "Old mode:" << std::hex << (unsigned) current_messages.heartbeat.base_mode
 			<< " new mode:" << std::hex << (unsigned) new_mode << std::endl;
 
 	mavlink_command_long_t com = { 0 };

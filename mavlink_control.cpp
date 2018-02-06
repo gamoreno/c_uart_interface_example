@@ -221,21 +221,21 @@ void remoteCommands(Autopilot_Interface &api)
 		if (pipe) {
 			std::string line;
 			while (std::getline(pipe, line)) {
-				cout << "got input [" << line << "]" << endl;
+				cerr << "got input [" << line << "]" << endl;
 		    	    std::istringstream ss(line);
 		    	    char cmd;
 		    	    ss >> cmd;
-		    	    //cout << "got cmd [" << cmd << "]" << endl;
+		    	    //cerr << "got cmd [" << cmd << "]" << endl;
 		    	    if (cmd == 'i') {
 		    	    	double roll;
 		    	    	double pitch;
 		    	    	double yaw;
 		    	    	double thrust;
 		    	    	if (!(ss >> roll >> pitch >> yaw >> thrust)) {
-		    	    		cout << "cmd error" << endl;
+		    	    		cerr << "cmd error" << endl;
 					break;
 		    	    	} else {
-		    	    		//cout << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
+		    	    		//cerr << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
 		    	    		api.set_manual_control(roll, pitch, yaw, thrust);
 		    	    	}
 		    	    } else if (cmd == 'r') {
@@ -247,16 +247,16 @@ void remoteCommands(Autopilot_Interface &api)
 					arg = arg.substr(1);
 				}
 				if (arg == "off") {
-					cout << "turning reboots off" << endl;
+					cerr << "turning reboots off" << endl;
 					api.set_buttons(0);
 				} else if (arg == "on") {
-					cout << "turning reboots on" << endl;
+					cerr << "turning reboots on" << endl;
 					api.set_buttons(1 << (REBOOT_SWITCH_CHANNEL - 5));
 				} else if (arg == "snapshot") {
-					cout << "taking snapshot" << endl;
+					cerr << "taking snapshot" << endl;
 					api.set_buttons(1 << (SNAPSHOT_SWITCH_CHANNEL - 5));
 				} else {
-					cout << "cmd error: arg was [" << arg << "], format is r {on|off|snapshot}" << endl;
+					cerr << "cmd error: arg was [" << arg << "], format is r {on|off|snapshot}" << endl;
 					break;
 				}
 #endif
@@ -265,9 +265,9 @@ void remoteCommands(Autopilot_Interface &api)
 			    } else if (cmd == 'p') {
 			      int32_t period;
 			      if (!(ss >> period)) {
-				cout << "cmd error" << endl;
+				cerr << "cmd error" << endl;
 			      } else {
-				cout << "setting reboot period to " << std::dec << period << endl;
+				cerr << "setting reboot period to " << std::dec << period << endl;
 				api.set_reboot_period(period);
 			      }
 			    } else if (cmd == 's') {
@@ -279,7 +279,7 @@ void remoteCommands(Autopilot_Interface &api)
 	}
 
     // shutdown
-	cout << "shutting down..." << endl;
+	cerr << "shutting down..." << endl;
     remove(PIPE_NAME);
 	api.disarm();
 }
