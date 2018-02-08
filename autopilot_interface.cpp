@@ -213,6 +213,7 @@ Autopilot_Interface(std::shared_ptr<Port> port_)
 
 	port = port_; // serial port management object
 
+	ticksToReset = 0;
 }
 
 Autopilot_Interface::
@@ -572,7 +573,7 @@ void Autopilot_Interface::send_manual_control(double roll, double pitch, double 
 			translateInput(roll), translateInput(pitch),
 			translateInput(yaw), translateInput(thrust), buttons);
 #endif
-	int len = port->write_message(msg);
+	port->write_message(msg);
 }
 
 void Autopilot_Interface::set_manual_control(double roll, double pitch, double yaw, double thrust) {
@@ -592,6 +593,9 @@ void Autopilot_Interface::click_button(unsigned button) {
 	}
 }
 
+void Autopilot_Interface::setTicksToReset(int ticks) {
+	ticksToReset = ticks;
+}
 
 int
 Autopilot_Interface::
@@ -626,7 +630,7 @@ void Autopilot_Interface::disarm() {
 
 
 void Autopilot_Interface::set_posctl_mode() {
-	const uint32_t PX4_CUSTOM_MAIN_MODE_ALTCTL = 2;
+	//const uint32_t PX4_CUSTOM_MAIN_MODE_ALTCTL = 2;
 	const uint32_t PX4_CUSTOM_MAIN_MODE_POSCTL = 3;
 
 	// we need the current mode
@@ -658,7 +662,7 @@ void Autopilot_Interface::set_posctl_mode() {
 	mavlink_msg_command_long_encode(system_id, companion_id, &message, &com);
 
 	// Send the message
-	int len = port->write_message(message);
+	port->write_message(message);
 }
 
 void Autopilot_Interface::set_reboot_period(int32_t period) {
@@ -666,7 +670,11 @@ void Autopilot_Interface::set_reboot_period(int32_t period) {
   param_set.target_system    = system_id;
   param_set.target_component = autopilot_id;
   strncpy(param_set.param_id, "YL_REBOOT_PERIOD", 16);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
   *((int32_t*) &param_set.param_value) = period;
+#pragma GCC diagnostic pop
   param_set.param_type = MAV_PARAM_TYPE_INT32;
 
   mavlink_message_t message;
@@ -954,7 +962,6 @@ write_thread(void)
 	// otherwise it will go into fail safe
 	while ( !time_to_exit )
 	{
-		//usleep(250000);   // Stream at 4Hz
 		usleep(1000000 / WRITE_HZ);
 		//write_setpoint();
 		
@@ -967,6 +974,15 @@ write_thread(void)
 			}
 		}
 #endif
+		if (ticksToReset > 0) {
+			ticksToReset--;
+			if (ticksToReset == 0) {
+
+				// reset movement so that it hovers
+				set_manual_control(0, 0, 0, 0.5);
+			}
+		}
+
 		send_manual_control(current_manual_input.roll, current_manual_input.pitch,
 				current_manual_input.yaw, current_manual_input.thrust,
 				current_manual_input.buttons);

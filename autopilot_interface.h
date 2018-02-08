@@ -241,6 +241,7 @@ class Autopilot_Interface
 {
 
 public:
+	static const unsigned WRITE_HZ = 8;
 
 	Autopilot_Interface();
 	Autopilot_Interface(std::shared_ptr<Port> port_);
@@ -274,6 +275,7 @@ public:
 	void click_button(unsigned button);
 	void set_posctl_mode();
 	void set_reboot_period(int32_t period);
+	void setTicksToReset(int ticks);
 
 	void start();
 	void stop();
@@ -310,8 +312,14 @@ private:
 	} current_manual_input;
 
 	static const unsigned MAX_BUTTONS = 4;
-	static const unsigned WRITE_HZ = 8;
 	uint16_t button_ticks_left[MAX_BUTTONS];
+
+	/**
+	 * This is a count down counter in the write thread.
+	 * When it reaches 0, the manual input is reset so that the
+	 * drone hovers
+	 */
+	int ticksToReset;
 
 	void read_thread();
 	void write_thread(void);

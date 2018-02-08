@@ -64,9 +64,6 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <cstring>
 #include <cerrno>
 #include <iostream>
@@ -79,6 +76,8 @@
 #include "serial_port.h"
 #include "UDPPort.h"
 #include "autopilot_interface.h"
+#include "pipe_control.h"
+#include "stdio_control.h"
 
 using namespace std;
 
@@ -95,18 +94,14 @@ bool parse_commandline(int argc, char **argv);
 
 // quit handler
 Autopilot_Interface *autopilot_interface_quit;
-std::shared_ptr<Port> port;
 void quit_handler(int sig);
 
-
-
-const char* PIPE_NAME = "/tmp/manual_input_pipe";
+std::shared_ptr<Port> port;
+bool useStdio = false;
 
 #define REBOOT_SWITCH_CHANNEL 6
 #define SNAPSHOT_SWITCH_CHANNEL 7
 
-
-void remoteCommands(Autopilot_Interface &api);
 
 // ------------------------------------------------------------------------------
 //   TOP
@@ -159,7 +154,11 @@ top()
 	 * Now we can implement the algorithm we want on top of the autopilot interface
 	 */
 	//commands(autopilot_interface);
-	remoteCommands(autopilot_interface);
+	if (useStdio) {
+		stdio_control(autopilot_interface);
+	} else {
+		remoteCommands(autopilot_interface);
+	}
 
 
 	// --------------------------------------------------------------------------
@@ -195,94 +194,6 @@ void test_manual_control(Autopilot_Interface &api, double roll, double pitch, do
 	sleep(3);
 }
 
-void remoteCommands(Autopilot_Interface &api)
-{
-
-	if (mknod(PIPE_NAME, S_IFIFO | 0600, 0) != 0) {
-		if (errno != EEXIST) {
-			cerr << "Error creating pipe " << PIPE_NAME << ": " << strerror(errno) << endl;
-			return;
-		}
-	}
-
-	api.set_manual_control(0.0, 0.0, 0.0, 0.0);
-
-	api.arm();
-	sleep(2);
-
-	api.set_posctl_mode();
-	sleep(2);
-	api.set_posctl_mode();
-
-
-	bool shutdown = false;
-	while (!shutdown) {
-		std::ifstream pipe(PIPE_NAME);
-		if (pipe) {
-			std::string line;
-			while (std::getline(pipe, line)) {
-				cerr << "got input [" << line << "]" << endl;
-		    	    std::istringstream ss(line);
-		    	    char cmd;
-		    	    ss >> cmd;
-		    	    //cerr << "got cmd [" << cmd << "]" << endl;
-		    	    if (cmd == 'i') {
-		    	    	double roll;
-		    	    	double pitch;
-		    	    	double yaw;
-		    	    	double thrust;
-		    	    	if (!(ss >> roll >> pitch >> yaw >> thrust)) {
-		    	    		cerr << "cmd error" << endl;
-					break;
-		    	    	} else {
-		    	    		//cerr << "got " << roll << ' ' << pitch << ' ' << yaw << ' ' << thrust << endl;
-		    	    		api.set_manual_control(roll, pitch, yaw, thrust);
-		    	    	}
-		    	    } else if (cmd == 'r') {
-				api.click_button(1);
-#if 0
-				string arg;
-				getline(ss, arg);
-				if (arg.length() > 0 && arg[0] == ' ') {
-					arg = arg.substr(1);
-				}
-				if (arg == "off") {
-					cerr << "turning reboots off" << endl;
-					api.set_buttons(0);
-				} else if (arg == "on") {
-					cerr << "turning reboots on" << endl;
-					api.set_buttons(1 << (REBOOT_SWITCH_CHANNEL - 5));
-				} else if (arg == "snapshot") {
-					cerr << "taking snapshot" << endl;
-					api.set_buttons(1 << (SNAPSHOT_SWITCH_CHANNEL - 5));
-				} else {
-					cerr << "cmd error: arg was [" << arg << "], format is r {on|off|snapshot}" << endl;
-					break;
-				}
-#endif
-		    	    } else if (cmd == 'c') {
-				api.click_button(2);
-			    } else if (cmd == 'p') {
-			      int32_t period;
-			      if (!(ss >> period)) {
-				cerr << "cmd error" << endl;
-			      } else {
-				cerr << "setting reboot period to " << std::dec << period << endl;
-				api.set_reboot_period(period);
-			      }
-			    } else if (cmd == 's') {
-		    	    	shutdown = true;
-				break;
-		    	    }
-			}
-		}
-	}
-
-    // shutdown
-	cerr << "shutting down..." << endl;
-    remove(PIPE_NAME);
-	api.disarm();
-}
 
 void
 commands(Autopilot_Interface &api)
@@ -359,49 +270,58 @@ bool
 parse_commandline(int argc, char **argv)
 {
 	// string for command line usage
-	const char *commandline_usage = "usage: mavlink_control serial[:device[:baud]]|udp[:host[:port[:localPort]]]";
+	const char *commandline_usage = "usage: mavlink_control [-s] serial[:device[:baud]]|udp[:host[:port[:localPort]]]";
+	bool cmdLineError = false;
 
-	if (argc == 2) {
-		auto args = splitString(argv[1], ":");
-		if (args[0] == "serial") {
-
-			// defaults
-#ifdef __APPLE__
-			const char *uart_name = (char*)"/dev/tty.usbmodem1";
-#else
-			const char *uart_name = (char*)"/dev/ttyUSB0";
-#endif
-			int baudrate = 57600;
-
-			if (args.size() > 1) {
-				uart_name = args[1].c_str();
+	for (int arg = 1; arg < argc; arg++) {
+		if (argv[arg][0] == '-') {
+			if (argv[arg][1] == 's') {
+				useStdio = true;
+			} else {
+				cmdLineError = true;
 			}
-			if (args.size() > 2) {
-				baudrate = atoi(args[2].c_str());
-			}
-			port = std::make_shared<Serial_Port>(uart_name, baudrate);
-		} else if (args[0] == "udp") {
+		} else {
+			auto args = splitString(argv[arg], ":");
+			if (args[0] == "serial") {
 
-			// defaults
-			string host = "localhost";
-			string remotePort = "14557";
-			string localPort = "14540";
+				// defaults
+	#ifdef __APPLE__
+				const char *uart_name = (char*)"/dev/tty.usbmodem1";
+	#else
+				const char *uart_name = (char*)"/dev/ttyUSB0";
+	#endif
+				int baudrate = 57600;
 
-			if (args.size() > 1) {
-				host = args[1];
-			}
-			if (args.size() > 2) {
-				remotePort = args[2];
-			}
-			if (args.size() > 3) {
-				localPort = args[3];
-			}
+				if (args.size() > 1) {
+					uart_name = args[1].c_str();
+				}
+				if (args.size() > 2) {
+					baudrate = atoi(args[2].c_str());
+				}
+				port = std::make_shared<Serial_Port>(uart_name, baudrate);
+			} else if (args[0] == "udp") {
 
-			port = std::make_shared<UDP_Port>(host, remotePort, localPort);
+				// defaults
+				string host = "localhost";
+				string remotePort = "14557";
+				string localPort = "14540";
+
+				if (args.size() > 1) {
+					host = args[1];
+				}
+				if (args.size() > 2) {
+					remotePort = args[2];
+				}
+				if (args.size() > 3) {
+					localPort = args[3];
+				}
+
+				port = std::make_shared<UDP_Port>(host, remotePort, localPort);
+			}
 		}
 	}
 
-	if (!port) {
+	if (cmdLineError ||  !port) {
 		printf("%s\n", commandline_usage);
 		return false;
 	}
