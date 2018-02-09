@@ -143,13 +143,14 @@ struct Time_Stamps
 	uint64_t heartbeat;
 	uint64_t sys_status;
 	uint64_t battery_status;
-	uint64_t radio_status;
+	uint64_t extended_sys_state;
 	uint64_t local_position_ned;
 	uint64_t global_position_int;
 	uint64_t position_target_local_ned;
 	uint64_t position_target_global_int;
 	uint64_t highres_imu;
 	uint64_t attitude;
+	uint64_t home_position;
 
 	void
 	reset_timestamps()
@@ -157,13 +158,14 @@ struct Time_Stamps
 		heartbeat = 0;
 		sys_status = 0;
 		battery_status = 0;
-		radio_status = 0;
+		extended_sys_state = 0;
 		local_position_ned = 0;
 		global_position_int = 0;
 		position_target_local_ned = 0;
 		position_target_global_int = 0;
 		highres_imu = 0;
 		attitude = 0;
+		home_position = 0;
 	}
 
 };
@@ -218,7 +220,7 @@ struct Mavlink_Messages {
 	mavlink_battery_status_t battery_status;
 
 	// Radio Status
-	mavlink_radio_status_t radio_status;
+	mavlink_extended_sys_state_t extended_sys_state;
 
 	// Local Position
 	mavlink_local_position_ned_t local_position_ned;
@@ -315,6 +317,7 @@ public:
 	int get_battery_remaining();
 	bool is_flying();
 	std::string get_position();
+	bool is_home_set();
 
 	bool set_flight_mode(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
 

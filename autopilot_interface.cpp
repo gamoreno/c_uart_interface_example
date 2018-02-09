@@ -99,7 +99,7 @@ set_position(float x, float y, float z, mavlink_set_position_target_local_ned_t 
 	sp.y   = y;
 	sp.z   = z;
 
-	printf("POSITION SETPOINT XYZ = [ %.4f , %.4f , %.4f ] \n", sp.x, sp.y, sp.z);
+	fprintf(stderr, "POSITION SETPOINT XYZ = [ %.4f , %.4f , %.4f ] \n", sp.x, sp.y, sp.z);
 
 }
 
@@ -121,7 +121,7 @@ set_velocity(float vx, float vy, float vz, mavlink_set_position_target_local_ned
 	sp.vy  = vy;
 	sp.vz  = vz;
 
-	//printf("VELOCITY SETPOINT UVW = [ %.4f , %.4f , %.4f ] \n", sp.vx, sp.vy, sp.vz);
+	//fprintf(stderr, "VELOCITY SETPOINT UVW = [ %.4f , %.4f , %.4f ] \n", sp.vx, sp.vy, sp.vz);
 
 }
 
@@ -167,7 +167,7 @@ set_yaw(float yaw, mavlink_set_position_target_local_ned_t &sp)
 
 	sp.yaw  = yaw;
 
-	printf("POSITION SETPOINT YAW = %.4f \n", sp.yaw);
+	fprintf(stderr, "POSITION SETPOINT YAW = %.4f \n", sp.yaw);
 
 }
 
@@ -273,17 +273,17 @@ read_messages()
 
 				case MAVLINK_MSG_ID_HEARTBEAT:
 				{
-					//printf("MAVLINK_MSG_ID_HEARTBEAT\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_HEARTBEAT\n");
 					mavlink_msg_heartbeat_decode(&message, &(current_messages.heartbeat));
 					current_messages.time_stamps.heartbeat = get_time_usec();
 					this_timestamps.heartbeat = current_messages.time_stamps.heartbeat;
-					//printf("MAVLINK_MSG_ID_HEARTBEAT:%x %x\n", current_messages.heartbeat.base_mode, current_messages.heartbeat.custom_mode);
+					//fprintf(stderr, "MAVLINK_MSG_ID_HEARTBEAT:%x %x\n", current_messages.heartbeat.base_mode, current_messages.heartbeat.custom_mode);
 					break;
 				}
 
 				case MAVLINK_MSG_ID_SYS_STATUS:
 				{
-					//printf("MAVLINK_MSG_ID_SYS_STATUS\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_SYS_STATUS\n");
 					mavlink_msg_sys_status_decode(&message, &(current_messages.sys_status));
 					current_messages.time_stamps.sys_status = get_time_usec();
 					this_timestamps.sys_status = current_messages.time_stamps.sys_status;
@@ -292,25 +292,25 @@ read_messages()
 
 				case MAVLINK_MSG_ID_BATTERY_STATUS:
 				{
-					//printf("MAVLINK_MSG_ID_BATTERY_STATUS\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_BATTERY_STATUS\n");
 					mavlink_msg_battery_status_decode(&message, &(current_messages.battery_status));
 					current_messages.time_stamps.battery_status = get_time_usec();
 					this_timestamps.battery_status = current_messages.time_stamps.battery_status;
 					break;
 				}
 
-				case MAVLINK_MSG_ID_RADIO_STATUS:
+				case MAVLINK_MSG_ID_EXTENDED_SYS_STATE:
 				{
-					//printf("MAVLINK_MSG_ID_RADIO_STATUS\n");
-					mavlink_msg_radio_status_decode(&message, &(current_messages.radio_status));
-					current_messages.time_stamps.radio_status = get_time_usec();
-					this_timestamps.radio_status = current_messages.time_stamps.radio_status;
+					//fprintf(stderr, "MAVLINK_MSG_ID_EXTENDED_SYS_STATE\n");
+					mavlink_msg_extended_sys_state_decode(&message, &(current_messages.extended_sys_state));
+					current_messages.time_stamps.extended_sys_state = get_time_usec();
+					this_timestamps.extended_sys_state = current_messages.time_stamps.extended_sys_state;
 					break;
 				}
 
 				case MAVLINK_MSG_ID_LOCAL_POSITION_NED:
 				{
-					//printf("MAVLINK_MSG_ID_LOCAL_POSITION_NED\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_LOCAL_POSITION_NED\n");
 					mavlink_msg_local_position_ned_decode(&message, &(current_messages.local_position_ned));
 					current_messages.time_stamps.local_position_ned = get_time_usec();
 					this_timestamps.local_position_ned = current_messages.time_stamps.local_position_ned;
@@ -319,7 +319,7 @@ read_messages()
 
 				case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
 				{
-					//printf("MAVLINK_MSG_ID_GLOBAL_POSITION_INT\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_GLOBAL_POSITION_INT\n");
 					mavlink_msg_global_position_int_decode(&message, &(current_messages.global_position_int));
 					current_messages.time_stamps.global_position_int = get_time_usec();
 					this_timestamps.global_position_int = current_messages.time_stamps.global_position_int;
@@ -328,7 +328,7 @@ read_messages()
 
 				case MAVLINK_MSG_ID_POSITION_TARGET_LOCAL_NED:
 				{
-					//printf("MAVLINK_MSG_ID_POSITION_TARGET_LOCAL_NED\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_POSITION_TARGET_LOCAL_NED\n");
 					mavlink_msg_position_target_local_ned_decode(&message, &(current_messages.position_target_local_ned));
 					current_messages.time_stamps.position_target_local_ned = get_time_usec();
 					this_timestamps.position_target_local_ned = current_messages.time_stamps.position_target_local_ned;
@@ -337,7 +337,7 @@ read_messages()
 
 				case MAVLINK_MSG_ID_POSITION_TARGET_GLOBAL_INT:
 				{
-					//printf("MAVLINK_MSG_ID_POSITION_TARGET_GLOBAL_INT\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_POSITION_TARGET_GLOBAL_INT\n");
 					mavlink_msg_position_target_global_int_decode(&message, &(current_messages.position_target_global_int));
 					current_messages.time_stamps.position_target_global_int = get_time_usec();
 					this_timestamps.position_target_global_int = current_messages.time_stamps.position_target_global_int;
@@ -346,7 +346,7 @@ read_messages()
 
 				case MAVLINK_MSG_ID_HIGHRES_IMU:
 				{
-					//printf("MAVLINK_MSG_ID_HIGHRES_IMU\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_HIGHRES_IMU\n");
 					mavlink_msg_highres_imu_decode(&message, &(current_messages.highres_imu));
 					current_messages.time_stamps.highres_imu = get_time_usec();
 					this_timestamps.highres_imu = current_messages.time_stamps.highres_imu;
@@ -355,16 +355,24 @@ read_messages()
 
 				case MAVLINK_MSG_ID_ATTITUDE:
 				{
-					//printf("MAVLINK_MSG_ID_ATTITUDE\n");
+					//fprintf(stderr, "MAVLINK_MSG_ID_ATTITUDE\n");
 					mavlink_msg_attitude_decode(&message, &(current_messages.attitude));
 					current_messages.time_stamps.attitude = get_time_usec();
 					this_timestamps.attitude = current_messages.time_stamps.attitude;
 					break;
 				}
 
+				case MAVLINK_MSG_ID_HOME_POSITION:
+				{
+					if (current_messages.time_stamps.home_position == 0) {
+						cerr << "Ready!" << endl;
+					}
+					current_messages.time_stamps.home_position = get_time_usec();
+					break;
+				}
 				default:
 				{
-					// printf("Warning, did not handle message id %i\n",message.msgid);
+					// fprintf(stderr, "Warning, did not handle message id %i\n",message.msgid);
 					break;
 				}
 
@@ -454,7 +462,7 @@ write_setpoint()
 	if ( len <= 0 )
 		fprintf(stderr,"WARNING: could not send POSITION_TARGET_LOCAL_NED \n");
 	//	else
-	//		printf("%lu POSITION_TARGET  = [ %f , %f , %f ] \n", write_count, position_target.x, position_target.y, position_target.z);
+	//		fprintf(stderr, "%lu POSITION_TARGET  = [ %f , %f , %f ] \n", write_count, position_target.x, position_target.y, position_target.z);
 
 	return;
 }
@@ -470,7 +478,7 @@ enable_offboard_control()
 	// Should only send this command once
 	if ( control_status == false )
 	{
-		printf("ENABLE OFFBOARD MODE\n");
+		fprintf(stderr, "ENABLE OFFBOARD MODE\n");
 
 		// ----------------------------------------------------------------------
 		//   TOGGLE OFF-BOARD MODE
@@ -488,7 +496,7 @@ enable_offboard_control()
 			//throw EXIT_FAILURE;
 		}
 
-		printf("\n");
+		fprintf(stderr, "\n");
 
 	} // end: if not offboard_status
 
@@ -506,7 +514,7 @@ disable_offboard_control()
 	// Should only send this command once
 	if ( control_status == true )
 	{
-		printf("DISABLE OFFBOARD MODE\n");
+		fprintf(stderr, "DISABLE OFFBOARD MODE\n");
 
 		// ----------------------------------------------------------------------
 		//   TOGGLE OFF-BOARD MODE
@@ -524,7 +532,7 @@ disable_offboard_control()
 			//throw EXIT_FAILURE;
 		}
 
-		printf("\n");
+		fprintf(stderr, "\n");
 
 	} // end: if offboard_status
 
@@ -640,7 +648,16 @@ int Autopilot_Interface::get_battery_remaining() {
 }
 
 bool Autopilot_Interface::is_flying() {
-	return current_messages.global_position_int.relative_alt > 100; // flying if higher than 10cm
+	//return current_messages.global_position_int.relative_alt > 100; // flying if higher than 10cm
+
+	// if taking off or landing, consider that flying too
+	return current_messages.time_stamps.extended_sys_state > 0
+			&& current_messages.extended_sys_state.landed_state != MAV_LANDED_STATE_UNDEFINED
+			&& current_messages.extended_sys_state.landed_state != MAV_LANDED_STATE_ON_GROUND;
+}
+
+bool Autopilot_Interface::is_home_set() {
+	return current_messages.time_stamps.home_position > 0;
 }
 
 std::string Autopilot_Interface::get_position() {
@@ -823,20 +840,20 @@ start()
 	//   READ THREAD
 	// --------------------------------------------------------------------------
 
-	printf("START READ THREAD \n");
+	fprintf(stderr, "START READ THREAD \n");
 
 	result = pthread_create( &read_tid, NULL, &start_autopilot_interface_read_thread, this );
 	if ( result ) throw result;
 
 	// now we're reading messages
-	printf("\n");
+	fprintf(stderr, "\n");
 
 
 	// --------------------------------------------------------------------------
 	//   CHECK FOR MESSAGES
 	// --------------------------------------------------------------------------
 
-	printf("CHECK FOR MESSAGES\n");
+	fprintf(stderr, "CHECK FOR MESSAGES\n");
 
 	while ( not current_messages.sysid )
 	{
@@ -845,10 +862,10 @@ start()
 		usleep(500000); // check at 2Hz
 	}
 
-	printf("Found\n");
+	fprintf(stderr, "Found\n");
 
 	// now we know autopilot is sending messages
-	printf("\n");
+	fprintf(stderr, "\n");
 
 
 	// --------------------------------------------------------------------------
@@ -864,15 +881,15 @@ start()
 	if ( not system_id )
 	{
 		system_id = current_messages.sysid;
-		printf("GOT VEHICLE SYSTEM ID: %i\n", system_id );
+		fprintf(stderr, "GOT VEHICLE SYSTEM ID: %i\n", system_id );
 	}
 
 	// Component ID
 	if ( not autopilot_id )
 	{
 		autopilot_id = current_messages.compid;
-		printf("GOT AUTOPILOT COMPONENT ID: %i\n", autopilot_id);
-		printf("\n");
+		fprintf(stderr, "GOT AUTOPILOT COMPONENT ID: %i\n", autopilot_id);
+		fprintf(stderr, "\n");
 	}
 
 
@@ -900,9 +917,9 @@ start()
 	initial_position.yaw      = local_data.attitude.yaw;
 	initial_position.yaw_rate = local_data.attitude.yawspeed;
 
-	printf("INITIAL POSITION XYZ = [ %.4f , %.4f , %.4f ] \n", initial_position.x, initial_position.y, initial_position.z);
-	printf("INITIAL POSITION YAW = %.4f \n", initial_position.yaw);
-	printf("\n");
+	fprintf(stderr, "INITIAL POSITION XYZ = [ %.4f , %.4f , %.4f ] \n", initial_position.x, initial_position.y, initial_position.z);
+	fprintf(stderr, "INITIAL POSITION YAW = %.4f \n", initial_position.yaw);
+	fprintf(stderr, "\n");
 
 	// we need this before starting the write thread
 
@@ -910,7 +927,7 @@ start()
 	// --------------------------------------------------------------------------
 	//   WRITE THREAD
 	// --------------------------------------------------------------------------
-	printf("START WRITE THREAD \n");
+	fprintf(stderr, "START WRITE THREAD \n");
 
 	result = pthread_create( &write_tid, NULL, &start_autopilot_interface_write_thread, this );
 	if ( result ) throw result;
@@ -920,7 +937,7 @@ start()
 		usleep(100000); // 10Hz
 
 	// now we're streaming setpoint commands
-	printf("\n");
+	fprintf(stderr, "\n");
 
 
 	// Done!
@@ -939,7 +956,7 @@ stop()
 	// --------------------------------------------------------------------------
 	//   CLOSE THREADS
 	// --------------------------------------------------------------------------
-	printf("CLOSE THREADS\n");
+	fprintf(stderr, "CLOSE THREADS\n");
 
 	// signal exit
 	time_to_exit = true;
@@ -949,7 +966,7 @@ stop()
 	pthread_join(write_tid,NULL);
 
 	// now the read and write threads are closed
-	printf("\n");
+	fprintf(stderr, "\n");
 
 	// still need to close the serial_port separately
 }
