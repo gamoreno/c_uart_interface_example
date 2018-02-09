@@ -61,6 +61,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <memory>
+#include <string>
 
 #include <common/mavlink.h>
 
@@ -167,6 +168,38 @@ struct Time_Stamps
 
 };
 
+enum PX4_CUSTOM_MAIN_MODE {
+	PX4_CUSTOM_MAIN_MODE_MANUAL = 1,
+	PX4_CUSTOM_MAIN_MODE_ALTCTL,
+	PX4_CUSTOM_MAIN_MODE_POSCTL,
+	PX4_CUSTOM_MAIN_MODE_AUTO,
+	PX4_CUSTOM_MAIN_MODE_ACRO,
+	PX4_CUSTOM_MAIN_MODE_OFFBOARD,
+	PX4_CUSTOM_MAIN_MODE_STABILIZED,
+	PX4_CUSTOM_MAIN_MODE_RATTITUDE,
+	PX4_CUSTOM_MAIN_MODE_SIMPLE /* unused, but reserved for future use */
+};
+
+enum PX4_CUSTOM_SUB_MODE_AUTO {
+	PX4_CUSTOM_SUB_MODE_AUTO_READY = 1,
+	PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF,
+	PX4_CUSTOM_SUB_MODE_AUTO_LOITER,
+	PX4_CUSTOM_SUB_MODE_AUTO_MISSION,
+	PX4_CUSTOM_SUB_MODE_AUTO_RTL,
+	PX4_CUSTOM_SUB_MODE_AUTO_LAND,
+	PX4_CUSTOM_SUB_MODE_AUTO_RTGS,
+	PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET
+};
+
+union px4_custom_mode {
+	struct {
+		uint16_t reserved;
+		uint8_t main_mode;
+		uint8_t sub_mode;
+	};
+	uint32_t data;
+	float data_float;
+};
 
 // Struct containing information on the MAV we are currently connected to
 
@@ -266,8 +299,24 @@ public:
 	void enable_offboard_control();
 	void disable_offboard_control();
 
+	/**
+	 * Get base mode or waits until received from heartbeat
+	 */
+	uint8_t get_base_mode();
+	uint8_t get_main_mode();
+	uint8_t get_sub_mode();
+	bool mode_equals(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
+
 	void arm();
 	void disarm();
+	void land();
+	void hover();
+	void takeoff();
+	int get_battery_remaining();
+	bool is_flying();
+	std::string get_position();
+
+	bool set_flight_mode(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
 
 	void send_manual_control(double roll, double pitch, double yaw, double throttle,
 				uint16_t buttons);

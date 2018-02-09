@@ -56,6 +56,10 @@
 #include <algorithm>
 #include <iostream>
 #include <unistd.h>
+#include <cmath>
+#include <sstream>
+
+using namespace std;
 
 #define RC_IN_MODE_1 1
 
@@ -597,6 +601,70 @@ void Autopilot_Interface::setTicksToReset(int ticks) {
 	ticksToReset = ticks;
 }
 
+void Autopilot_Interface::land() {
+	set_flight_mode(MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, PX4_CUSTOM_MAIN_MODE_AUTO, PX4_CUSTOM_SUB_MODE_AUTO_LAND);
+}
+
+void Autopilot_Interface::hover() {
+	set_manual_control(0, 0, 0, 0.5);
+}
+
+void Autopilot_Interface::takeoff() {
+	arm();
+
+	mavlink_command_long_t cmd = { 0 };
+	cmd.target_system    = system_id;
+	cmd.target_component = autopilot_id;
+	cmd.command          = MAV_CMD_NAV_TAKEOFF;
+	cmd.confirmation     = 0;
+	cmd.param1           = -1; // no pitch requested
+	cmd.param2 = 0; // not used
+	cmd.param3 = 0; // not used
+	cmd.param4 = NAN; // yaw angle
+	cmd.param5 = NAN; // Y
+	cmd.param6 = NAN; // X
+	cmd.param7 = 1 + current_messages.global_position_int.alt / 1000; // Z
+
+	// Encode
+	mavlink_message_t message;
+	mavlink_msg_command_long_encode(system_id, companion_id, &message, &cmd);
+
+	// Send the message
+	port->write_message(message);
+
+	hover(); // so that it hovers after taking off
+}
+
+int Autopilot_Interface::get_battery_remaining() {
+	return current_messages.battery_status.battery_remaining;
+}
+
+bool Autopilot_Interface::is_flying() {
+	return current_messages.global_position_int.relative_alt > 100; // flying if higher than 10cm
+}
+
+std::string Autopilot_Interface::get_position() {
+	ostringstream pos;
+	pos << current_messages.local_position_ned.x;
+	pos << ',';
+	pos << current_messages.local_position_ned.y;
+	pos << ',';
+	pos << current_messages.local_position_ned.z;
+	pos << ',';
+	pos << current_messages.attitude.pitch;
+	pos << ',';
+	pos << current_messages.attitude.yaw;
+	pos << ',';
+	pos << current_messages.attitude.roll;
+	pos << ',';
+	pos << current_messages.local_position_ned.vx;
+	pos << ',';
+	pos << current_messages.local_position_ned.vy;
+	pos << ',';
+	pos << current_messages.local_position_ned.vz;
+	return pos.str();
+}
+
 int
 Autopilot_Interface::
 arm_disarm( bool arm )
@@ -628,41 +696,83 @@ void Autopilot_Interface::disarm() {
 	arm_disarm(false);
 }
 
+uint8_t Autopilot_Interface::get_base_mode() {
+	while (current_messages.time_stamps.heartbeat == 0) {
+		usleep(100000);
+	}
+	return current_messages.heartbeat.base_mode;
+}
+
+uint8_t Autopilot_Interface::get_main_mode() {
+	while (current_messages.time_stamps.heartbeat == 0) {
+		usleep(100000);
+	}
+
+	px4_custom_mode custom_mode;
+	custom_mode.data = current_messages.heartbeat.custom_mode;
+	return custom_mode.main_mode;
+}
+
+uint8_t Autopilot_Interface::get_sub_mode() {
+	while (current_messages.time_stamps.heartbeat == 0) {
+		usleep(100000);
+	}
+
+	px4_custom_mode custom_mode;
+	custom_mode.data = current_messages.heartbeat.custom_mode;
+	return custom_mode.sub_mode;
+}
+
+bool Autopilot_Interface::mode_equals(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode) {
+	auto _base_mode = get_base_mode();
+
+	return ((_base_mode & base_mode) == base_mode) && get_main_mode() == main_mode
+			&& get_sub_mode() == sub_mode;
+}
+
+bool Autopilot_Interface::set_flight_mode(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode) {
+	int tries = 3;
+	while (tries > 0 && !mode_equals(base_mode, main_mode, sub_mode)) {
+		uint8_t _base_mode = get_base_mode();
+		uint8_t newBaseMode = _base_mode & ~MAV_MODE_FLAG_DECODE_POSITION_CUSTOM_MODE;
+		newBaseMode |= base_mode;
+
+		mavlink_command_long_t cmd = { 0 };
+		cmd.target_system = system_id;
+		cmd.target_component = autopilot_id;
+		cmd.command = MAV_CMD_DO_SET_MODE;
+		cmd.confirmation = 1;
+		cmd.param1 = newBaseMode;
+		cmd.param2 = main_mode;
+		cmd.param3 = sub_mode;
+
+		// Encode
+		mavlink_message_t message;
+		mavlink_msg_command_long_encode(system_id, companion_id, &message, &cmd);
+
+		// Send the message
+		port->write_message(message);
+
+		usleep(500000);
+		tries--;
+	};
+
+//	if (main_mode != get_main_mode()) {
+//		cerr << std::hex << "main mode=" << (int) get_main_mode() << " desired=" << (int) main_mode << std::dec << endl;
+//	}
+//	if (sub_mode != get_sub_mode()) {
+//		cerr << std::hex << "sub mode=" << (int) get_sub_mode() << " desired=" << (int) sub_mode << std::dec << endl;
+//	}
+
+	return (mode_equals(base_mode, main_mode, sub_mode));
+}
+
 
 void Autopilot_Interface::set_posctl_mode() {
-	//const uint32_t PX4_CUSTOM_MAIN_MODE_ALTCTL = 2;
-	const uint32_t PX4_CUSTOM_MAIN_MODE_POSCTL = 3;
-
-	// we need the current mode
-	while (current_messages.time_stamps.heartbeat == 0) {
-		sleep(1);
+	bool success = set_flight_mode(MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, PX4_CUSTOM_MAIN_MODE_POSCTL, 0);
+	if (!success) {
+		cerr << "set_flight_mode failed" << endl;
 	}
-#if 1
-	uint8_t new_mode = current_messages.heartbeat.base_mode & MAV_MODE_FLAG_DECODE_POSITION_HIL;
-	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-#else
-	uint8_t new_mode = current_messages.heartbeat.base_mode
-			& (MAV_MODE_FLAG_DECODE_POSITION_HIL | MAV_MODE_FLAG_DECODE_POSITION_SAFETY);
-	new_mode |= MAV_MODE_FLAG_GUIDED_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
-			| MAV_MODE_FLAG_CUSTOM_MODE_ENABLED | MAV_MODE_FLAG_SAFETY_ARMED;
-#endif
-	std::cerr << "Old mode:" << std::hex << (unsigned) current_messages.heartbeat.base_mode
-			<< " new mode:" << std::hex << (unsigned) new_mode << std::endl;
-
-	mavlink_command_long_t com = { 0 };
-	com.target_system    = system_id;
-	com.target_component = autopilot_id;
-	com.command          = MAV_CMD_DO_SET_MODE;
-	com.confirmation     = 0;
-	com.param1           = new_mode;
-	com.param2			 = PX4_CUSTOM_MAIN_MODE_POSCTL;
-
-	// Encode
-	mavlink_message_t message;
-	mavlink_msg_command_long_encode(system_id, companion_id, &message, &com);
-
-	// Send the message
-	port->write_message(message);
 }
 
 void Autopilot_Interface::set_reboot_period(int32_t period) {
