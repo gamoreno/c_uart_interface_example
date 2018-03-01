@@ -324,6 +324,7 @@ public:
 	void send_manual_control(double roll, double pitch, double yaw, double throttle,
 				uint16_t buttons);
 	void set_manual_control(double roll, double pitch, double yaw, double throttle);
+	void send_heartbeat();
 	void click_button(unsigned button);
 	void set_posctl_mode();
 	void set_reboot_period(int32_t period);

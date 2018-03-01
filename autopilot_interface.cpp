@@ -1058,6 +1058,16 @@ read_thread()
 }
 
 
+void Autopilot_Interface::send_heartbeat() {
+	mavlink_message_t msg;
+		//mavlink_msg_manual_control_pack(system_id, autopilot_id, &msg, system_id,
+	mavlink_msg_heartbeat_pack(214, 1, &msg, MAV_TYPE_GCS, MAV_AUTOPILOT_INVALID,
+			0, // no mode seems relevant
+			0,
+			0);
+	port->write_message(msg);
+}
+
 // ------------------------------------------------------------------------------
 //   Write Thread
 // ------------------------------------------------------------------------------
@@ -1113,6 +1123,7 @@ write_thread(void)
 		send_manual_control(current_manual_input.roll, current_manual_input.pitch,
 				current_manual_input.yaw, current_manual_input.thrust,
 				current_manual_input.buttons);
+		send_heartbeat();
 	}
 
 	// signal end
