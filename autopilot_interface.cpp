@@ -370,6 +370,12 @@ read_messages()
 					current_messages.time_stamps.home_position = get_time_usec();
 					break;
 				}
+				case MAVLINK_MSG_ID_AUTOPILOT_VERSION:
+				{
+					mavlink_msg_autopilot_version_decode(&message, &current_messages.version);
+					current_messages.time_stamps.version = get_time_usec();
+					break;
+				}
 				default:
 				{
 					// fprintf(stderr, "Warning, did not handle message id %i\n",message.msgid);
@@ -467,6 +473,24 @@ write_setpoint()
 	return;
 }
 
+
+void Autopilot_Interface::request_autopilot_capabilities(float param1, float param2) {
+	mavlink_command_int_t cmd = { 0 };
+	cmd.target_system    = system_id;
+	cmd.target_component = autopilot_id;
+	cmd.command = MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES;
+	cmd.param1 = param1;
+	cmd.param2 = param2;
+
+	mavlink_message_t message;
+	mavlink_msg_command_int_encode(system_id, companion_id, &message, &cmd);
+	int len = write_message(message);
+
+	// check the write
+	if ( len <= 0 ) {
+		fprintf(stderr,"WARNING: could not send COMMAND_INT \n");
+	}
+}
 
 // ------------------------------------------------------------------------------
 //   Start Off-Board Mode

@@ -151,6 +151,7 @@ struct Time_Stamps
 	uint64_t highres_imu;
 	uint64_t attitude;
 	uint64_t home_position;
+	uint64_t version;
 
 	void
 	reset_timestamps()
@@ -166,6 +167,7 @@ struct Time_Stamps
 		highres_imu = 0;
 		attitude = 0;
 		home_position = 0;
+		version = 0;
 	}
 
 };
@@ -240,6 +242,9 @@ struct Mavlink_Messages {
 	// Attitude
 	mavlink_attitude_t attitude;
 
+	// Autopilot Version
+	mavlink_autopilot_version_t version;
+
 	// System Parameters?
 
 
@@ -309,6 +314,7 @@ public:
 	uint8_t get_sub_mode();
 	bool mode_equals(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
 
+	void request_autopilot_capabilities(float param1, float param2);
 	void arm();
 	void disarm();
 	void land();

