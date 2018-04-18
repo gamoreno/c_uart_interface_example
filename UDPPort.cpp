@@ -32,7 +32,7 @@ void UDP_Port::open_port() {
 
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = 0;
 	hints.ai_flags = AI_ADDRCONFIG;
