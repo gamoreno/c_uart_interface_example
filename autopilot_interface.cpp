@@ -218,6 +218,7 @@ Autopilot_Interface(std::shared_ptr<Port> port_)
 	port = port_; // serial port management object
 
 	ticksToReset = 0;
+	manualInputMode = false;
 }
 
 Autopilot_Interface::
@@ -816,6 +817,15 @@ void Autopilot_Interface::set_posctl_mode() {
 	}
 }
 
+void Autopilot_Interface::set_manual_mode() {
+	bool success = set_flight_mode(MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, PX4_CUSTOM_MAIN_MODE_MANUAL, 0);
+	if (!success) {
+		cerr << "set_flight_mode failed" << endl;
+	} else {
+		manualInputMode = true;
+	}
+}
+
 void Autopilot_Interface::set_reboot_period(int32_t period) {
   mavlink_param_set_t param_set;
   param_set.target_system    = system_id;
@@ -1144,9 +1154,11 @@ write_thread(void)
 			}
 		}
 
-		send_manual_control(current_manual_input.roll, current_manual_input.pitch,
-				current_manual_input.yaw, current_manual_input.thrust,
-				current_manual_input.buttons);
+		if (!manualInputMode) {
+			send_manual_control(current_manual_input.roll, current_manual_input.pitch,
+					current_manual_input.yaw, current_manual_input.thrust,
+					current_manual_input.buttons);
+		}
 		send_heartbeat();
 	}
 

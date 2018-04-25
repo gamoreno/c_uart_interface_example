@@ -34,6 +34,10 @@ void attack(Autopilot_Interface &api) {
 
 	int attempt = 0;
 	do {
+		if (numbers.empty()) {
+			cerr << "Attack failed" << endl;
+			return;
+		}
 		std::uniform_int_distribution<> uniform(0, numbers.size() - 1);
 		int index = uniform(generator);
 		int number = numbers.at(index);
@@ -102,6 +106,9 @@ void stdio_control(Autopilot_Interface &api) {
 				break;
 			} else if (cmd[0] == "attack") {
 				attack(api);
+			} else if (cmd[0] == "manual") {
+				api.set_manual_mode();
+				api.arm();
 			}
 		}
 	}

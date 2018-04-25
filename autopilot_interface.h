@@ -333,6 +333,7 @@ public:
 	void send_heartbeat();
 	void click_button(unsigned button);
 	void set_posctl_mode();
+	void set_manual_mode();
 	void set_reboot_period(int32_t period);
 	void setTicksToReset(int ticks);
 
@@ -379,6 +380,8 @@ private:
 	 * drone hovers
 	 */
 	int ticksToReset;
+
+	int manualInputMode;
 
 	void read_thread();
 	void write_thread(void);
