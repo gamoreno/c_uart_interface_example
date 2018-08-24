@@ -987,6 +987,9 @@ void
 Autopilot_Interface::
 stop()
 {
+
+	disable_offboard_control();
+
 	// --------------------------------------------------------------------------
 	//   CLOSE THREADS
 	// --------------------------------------------------------------------------
@@ -1047,28 +1050,6 @@ start_write_thread(void)
 	}
 
 }
-
-
-// ------------------------------------------------------------------------------
-//   Quit Handler
-// ------------------------------------------------------------------------------
-void
-Autopilot_Interface::
-handle_quit( int sig )
-{
-
-	disable_offboard_control();
-
-	try {
-		stop();
-
-	}
-	catch (int error) {
-		fprintf(stderr,"Warning, could not stop autopilot interface\n");
-	}
-
-}
-
 
 
 // ------------------------------------------------------------------------------
@@ -1168,6 +1149,28 @@ write_thread(void)
 	return;
 
 }
+
+void Autopilot_Interface::dumpCurrentMavlinkMessages() {
+
+	// local position in ned frame
+	mavlink_local_position_ned_t pos = current_messages.local_position_ned;
+	printf("Got message LOCAL_POSITION_NED (spec: https://pixhawk.ethz.ch/mavlink/#LOCAL_POSITION_NED)\n");
+	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
+
+	// hires imu
+	mavlink_highres_imu_t imu = current_messages.highres_imu;
+	printf("Got message HIGHRES_IMU (spec: https://pixhawk.ethz.ch/mavlink/#HIGHRES_IMU)\n");
+	printf("    ap time:     %lu \n", imu.time_usec);
+	printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
+	printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
+	printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
+	printf("    baro:        %f (mBar) \n"  , imu.abs_pressure);
+	printf("    altitude:    %f (m) \n"     , imu.pressure_alt);
+	printf("    temperature: %f C \n"       , imu.temperature );
+
+	printf("\n");
+}
+
 
 // End Autopilot_Interface
 

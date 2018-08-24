@@ -279,14 +279,38 @@ struct Mavlink_Messages {
  */
 class Autopilot_Interface
 {
+	friend void* start_autopilot_interface_read_thread(void *args);
+	friend void* start_autopilot_interface_write_thread(void *args);
 
 public:
+	Autopilot_Interface(std::shared_ptr<Port> port_);
+	virtual ~Autopilot_Interface();
+
 	static const unsigned WRITE_HZ = 8;
 
-	Autopilot_Interface();
-	Autopilot_Interface(std::shared_ptr<Port> port_);
-	~Autopilot_Interface();
+	Mavlink_Messages current_messages;
 
+	virtual void dumpCurrentMavlinkMessages();
+	virtual void arm();
+	virtual void disarm();
+	virtual void set_manual_control(double roll, double pitch, double yaw, double throttle);
+	virtual void set_posctl_mode();
+	virtual void set_manual_mode();
+	virtual void start();
+	virtual void stop();
+	virtual void click_button(unsigned button);
+	virtual void set_reboot_period(int32_t period);
+	virtual void land();
+	virtual void hover();
+	virtual void takeoff();
+	virtual int get_battery_remaining();
+	virtual bool is_flying();
+	virtual std::string get_position();
+	virtual bool is_home_set();
+	virtual void setTicksToReset(int ticks);
+	virtual void request_autopilot_capabilities(float param1, float param2);
+
+protected:
 	char reading_status;
 	char writing_status;
 	char control_status;
@@ -296,7 +320,6 @@ public:
 	int autopilot_id;
 	int companion_id;
 
-	Mavlink_Messages current_messages;
 	mavlink_set_position_target_local_ned_t initial_position;
 
 	void update_setpoint(mavlink_set_position_target_local_ned_t setpoint);
@@ -314,37 +337,14 @@ public:
 	uint8_t get_sub_mode();
 	bool mode_equals(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
 
-	void request_autopilot_capabilities(float param1, float param2);
-	void arm();
-	void disarm();
-	void land();
-	void hover();
-	void takeoff();
-	int get_battery_remaining();
-	bool is_flying();
-	std::string get_position();
-	bool is_home_set();
-
 	bool set_flight_mode(uint8_t base_mode, uint8_t main_mode, uint8_t sub_mode);
 
 	void send_manual_control(double roll, double pitch, double yaw, double throttle,
 				uint16_t buttons);
-	void set_manual_control(double roll, double pitch, double yaw, double throttle);
 	void send_heartbeat();
-	void click_button(unsigned button);
-	void set_posctl_mode();
-	void set_manual_mode();
-	void set_reboot_period(int32_t period);
-	void setTicksToReset(int ticks);
-
-	void start();
-	void stop();
 
 	void start_read_thread();
 	void start_write_thread(void);
-
-	void handle_quit( int sig );
-
 
 private:
 

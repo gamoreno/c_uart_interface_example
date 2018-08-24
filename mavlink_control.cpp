@@ -76,6 +76,7 @@
 #include "serial_port.h"
 #include "UDPPort.h"
 #include "autopilot_interface.h"
+#include "MockAutopilotInterface.h"
 #include "pipe_control.h"
 #include "stdio_control.h"
 
@@ -93,11 +94,12 @@ void commands(Autopilot_Interface &autopilot_interface);
 bool parse_commandline(int argc, char **argv);
 
 // quit handler
-Autopilot_Interface *autopilot_interface_quit;
+Autopilot_Interface *autopilot_interface;
 void quit_handler(int sig);
 
 std::shared_ptr<Port> port;
 bool useStdio = false;
+bool useMock = false;
 
 #define REBOOT_SWITCH_CHANNEL 6
 #define SNAPSHOT_SWITCH_CHANNEL 7
@@ -125,7 +127,11 @@ top()
 	 * otherwise the vehicle will go into failsafe.
 	 *
 	 */
-	Autopilot_Interface autopilot_interface(port);
+	if (useMock) {
+		autopilot_interface = new Mock_Autopilot_Interface(port);
+	} else {
+		autopilot_interface = new Autopilot_Interface(port);
+	}
 
 	/*
 	 * Setup interrupt signal handler
@@ -135,7 +141,6 @@ top()
 	 * The handler in this example needs references to the above objects.
 	 *
 	 */
-	autopilot_interface_quit = &autopilot_interface;
 	signal(SIGINT,quit_handler);
 
 	/*
@@ -143,7 +148,7 @@ top()
 	 * This is where the port is opened, and read and write threads are started.
 	 */
 	port->start();
-	autopilot_interface.start();
+	autopilot_interface->start();
 
 
 	// --------------------------------------------------------------------------
@@ -155,9 +160,9 @@ top()
 	 */
 	//commands(autopilot_interface);
 	if (useStdio) {
-		stdio_control(autopilot_interface);
+		stdio_control(*autopilot_interface);
 	} else {
-		remoteCommands(autopilot_interface);
+		remoteCommands(*autopilot_interface);
 	}
 
 
@@ -168,7 +173,7 @@ top()
 	/*
 	 * Now that we are done we can stop the threads and close the port
 	 */
-	autopilot_interface.stop();
+	autopilot_interface->stop();
 	port->stop();
 
 
@@ -231,27 +236,7 @@ commands(Autopilot_Interface &api)
 	// --------------------------------------------------------------------------
 	printf("READ SOME MESSAGES \n");
 
-	// copy current messages
-	Mavlink_Messages messages = api.current_messages;
-
-	// local position in ned frame
-	mavlink_local_position_ned_t pos = messages.local_position_ned;
-	printf("Got message LOCAL_POSITION_NED (spec: https://pixhawk.ethz.ch/mavlink/#LOCAL_POSITION_NED)\n");
-	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
-
-	// hires imu
-	mavlink_highres_imu_t imu = messages.highres_imu;
-	printf("Got message HIGHRES_IMU (spec: https://pixhawk.ethz.ch/mavlink/#HIGHRES_IMU)\n");
-	printf("    ap time:     %lu \n", imu.time_usec);
-	printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-	printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
-	printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
-	printf("    baro:        %f (mBar) \n"  , imu.abs_pressure);
-	printf("    altitude:    %f (m) \n"     , imu.pressure_alt);
-	printf("    temperature: %f C \n"       , imu.temperature );
-
-	printf("\n");
-
+	api.dumpCurrentMavlinkMessages();
 
 	// --------------------------------------------------------------------------
 	//   END OF COMMANDS
@@ -270,13 +255,15 @@ bool
 parse_commandline(int argc, char **argv)
 {
 	// string for command line usage
-	const char *commandline_usage = "usage: mavlink_control [-s] serial[:device[:baud]]|udp[:host[:port[:localPort]]]";
+	const char *commandline_usage = "usage: mavlink_control [-m][-s] serial[:device[:baud]]|udp[:host[:port[:localPort]]]";
 	bool cmdLineError = false;
 
 	for (int arg = 1; arg < argc; arg++) {
 		if (argv[arg][0] == '-') {
 			if (argv[arg][1] == 's') {
 				useStdio = true;
+			} else if (argv[arg][1] == 'm') {
+				useMock = true;
 			} else {
 				cmdLineError = true;
 			}
@@ -343,7 +330,7 @@ quit_handler( int sig )
 
 	// autopilot interface
 	try {
-		autopilot_interface_quit->handle_quit(sig);
+		autopilot_interface->stop();
 	}
 	catch (int error){}
 
